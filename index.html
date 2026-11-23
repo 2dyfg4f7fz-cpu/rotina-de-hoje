@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotina de Hoje</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+        }
+        input:focus {
+            border-color: #667eea;
+        }
+        button {
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        ul {
+            list-style: none;
+        }
+        li {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        li.concluida span {
+            text-decoration: line-through;
+            color: #888;
+        }
+        .acoes {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-concluir {
+            background: #28a745;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        .btn-apagar {
+            background: #dc3545;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        .vazio {
+            text-align: center;
+            color: #888;
+            padding: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✨ Rotina de Hoje</h1>
+        
+        <div class="input-area">
+            <input type="text" id="novaTarefa" placeholder="Adicione uma nova tarefa...">
+            <button onclick="adicionarTarefa()">Adicionar</button>
+        </div>
+
+        <ul id="listaTarefas">
+            <li class="vazio">Carregando tarefas...</li>
+        </ul>
+    </div>
+
+    <script>
+        // 
+        const SUPABASE_URL = "https://alpfazenzibtxehyrzha.supabase.com";
+        const SUPABASE_KEY = "sb_publishable_LB60NYzk14XrLmhn7k-rqw_dWztd9ae";
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function carregarTarefas() {
+            const { data, error } = await supabase
+                .from('tarefas')
+                .select('*')
+                .order('id', { ascending: false });
+            
+            const lista = document.getElementById('listaTarefas');
+            lista.innerHTML = '';
+
+            if (error) {
+                lista.innerHTML = '<li class="vazio">Erro ao carregar. Verifique a tabela no Supabase!</li>';
+                return;
+            }
+
+            if (data.length === 0) {
+                lista.innerHTML = '<li class="vazio">Nenhuma tarefa ainda. Comece acima! ✏️</li>';
+                return;
+            }
+
+            data.forEach(tarefa => {
+                const li = document.createElement('li');
+                li.className = tarefa.concluida ? 'concluida' : '';
+                li.innerHTML = `
+                    <span>${tarefa.nome}</span>
+                    <div class="acoes">
+                        <button class="btn-concluir" onclick="alternar(${tarefa.id}, ${tarefa.concluida})">✓</button>
+                        <button class="btn-apagar" onclick="apagar(${tarefa.id})">✕</button>
+                    </div>
+                `;
+                lista.appendChild(li);
+            });
+        }
+
+        async function adicionarTarefa() {
+            const input = document.getElementById('novaTarefa');
+            const nome = input.value.trim();
+            
+            if (!nome) return;
+
+            await supabase.from('tarefas').insert({ nome: nome, concluida: false });
+            input.value = '';
+            carregarTarefas();
+        }
+
+        async function alternar(id, atual) {
+            await supabase.from('tarefas').update({ concluida: !atual }).eq('id', id);
+            carregarTarefas();
+        }
+
+        async function apagar(id) {
+            if (confirm('Apagar esta tarefa?')) {
+                await supabase.from('tarefas').delete().eq('id', id);
+                carregarTarefas();
+            }
+        }
+
+        document.getElementById('novaTarefa').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') adicionarTarefa();
+        });
+
+        carregarTarefas();
+    </script>
+</body>
+</html>
